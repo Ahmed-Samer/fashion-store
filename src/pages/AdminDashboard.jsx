@@ -2,21 +2,27 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Package, Layers, Users, TrendingUp, DollarSign, TicketPercent, 
-  Trash2, Loader2, Wand2, Sparkles, Edit, Palette, Tag, Upload, Image as ImageIcon, Search, Phone, MapPin, MessageCircle, Box
+  Trash2, Loader2, Wand2, Sparkles, Edit, Palette, Tag, Upload, Image as ImageIcon, Search, Phone, MapPin, MessageCircle, Box, Ruler
 } from 'lucide-react';
 import { collection, addDoc, deleteDoc, updateDoc, doc, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { db, getAppId } from '../firebase';
 import { callGeminiAPI } from '../utils/gemini';
 
 const CATEGORIES = ['Abayas', 'Hoodies', 'Pants', 'Dresses', 'Tops', 'Skirts', 'Accessories', 'Shoes'];
+const FITS = ['Regular Fit', 'Oversize', 'Slim Fit', 'Loose Fit']; // أنواع التلبيس
 
 const AdminDashboard = ({ user, products, orders, showNotification }) => {
   const navigate = useNavigate();
   const appId = getAppId();
   const [activeTab, setActiveTab] = useState('orders'); 
   const [editingId, setEditingId] = useState(null); 
-  // ضفنا stock هنا
-  const [productForm, setProductForm] = useState({ name: '', price: '', stock: '', image: '', category: 'Abayas', description: '', tags: '', color: '' });
+  
+  // ضفنا sizeNote و fitType
+  const [productForm, setProductForm] = useState({ 
+      name: '', price: '', stock: '', image: '', category: 'Abayas', 
+      description: '', tags: '', color: '',
+      sizeNote: '', fitType: 'Regular Fit' 
+  });
   
   const [promoForm, setPromoForm] = useState({ code: '', discount: '' });
   const [promoCodes, setPromoCodes] = useState([]);
@@ -53,7 +59,6 @@ const AdminDashboard = ({ user, products, orders, showNotification }) => {
     return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
   };
 
-  // --- AI & Image Functions ---
   const handleGenerateDescription = async () => { if (!productForm.name || !productForm.category) { showNotification('Name & Category required', 'error'); return; } setIsGeneratingDesc(true); const prompt = `Write a creative Arabic product description. Name: ${productForm.name}, Category: ${productForm.category}, Price: ${productForm.price}. Tone: Trendy Egyptian.`; const desc = await callGeminiAPI(prompt); if (desc) { setProductForm(prev => ({ ...prev, description: desc.trim() })); showNotification('Description Generated ✨'); } setIsGeneratingDesc(false); };
   const handleGenerateTags = async () => { if (!productForm.name) return; setIsGeneratingTags(true); const prompt = `5 style tags for: ${productForm.name} (${productForm.category}). Comma separated.`; const tags = await callGeminiAPI(prompt); if (tags) { setProductForm(prev => ({ ...prev, tags: tags.trim() })); showNotification('Tags Generated ✨'); } setIsGeneratingTags(false); };
   const handleGenerateReply = async (msg) => { setGeneratingReplyId(msg.id); const prompt = `Reply to customer as Modern Style support: "${msg.content}". Language: Arabic/English matching user.`; const reply = await callGeminiAPI(prompt); if (reply) { setGeneratedReplies(prev => ({...prev, [msg.id]: reply.trim()})); showNotification('Drafted 📝'); } setGeneratingReplyId(null); };
@@ -63,7 +68,6 @@ const AdminDashboard = ({ user, products, orders, showNotification }) => {
     try { const apiKey = import.meta.env.VITE_IMGBB_API_KEY; const response = await fetch(`https://api.imgbb.com/1/upload?key=${apiKey}`, { method: "POST", body: formData }); const data = await response.json(); if (data.success) { const url = data.data.url; setProductForm(prev => ({ ...prev, image: prev.image ? `${prev.image}, ${url}` : url })); showNotification('Uploaded! 🖼️'); } else { throw new Error("Failed"); } } catch (error) { console.error(error); showNotification('Upload Failed', 'error'); } setIsUploading(false);
   };
 
-  // --- CRUD Operations ---
   const handleSaveProduct = async (e) => {
     e.preventDefault(); if (!user) { alert("Please refresh."); return; }
     try { 
@@ -71,11 +75,10 @@ const AdminDashboard = ({ user, products, orders, showNotification }) => {
       const imageList = rawImage.split(',').map(url => url.trim()).filter(url => url); 
       const mainImage = imageList[0] || 'https://placehold.co/400'; 
       
-      // بنحفظ الـ stock كرقم
       const data = { 
           ...productForm, 
           price: Number(productForm.price), 
-          stock: Number(productForm.stock), // <--- Stock Added
+          stock: Number(productForm.stock),
           image: mainImage, 
           images: imageList, 
           updatedAt: new Date().toISOString() 
@@ -83,24 +86,24 @@ const AdminDashboard = ({ user, products, orders, showNotification }) => {
       
       if (editingId) { await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'products', editingId), data); showNotification('Updated! ✅'); } 
       else { await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'products'), { ...data, createdAt: new Date().toISOString() }); showNotification('Added! 🎉'); } 
-      setProductForm({ name: '', price: '', stock: '', image: '', category: 'Abayas', description: '', tags: '', color: '' }); setEditingId(null); 
+      setProductForm({ name: '', price: '', stock: '', image: '', category: 'Abayas', description: '', tags: '', color: '', sizeNote: '', fitType: 'Regular Fit' }); setEditingId(null); 
     } catch (error) { alert(`Error: ${error.message}`); }
   };
 
-  // دالة مساعدة عشان نعرض البيانات في الفورم لما ندوس تعديل
   const startEditing = (p) => {
       setProductForm({ 
           name: p.name, 
           price: p.price, 
-          stock: p.stock || 0, // لو مفيش ستوك قديم نعتبره صفر
+          stock: p.stock || 0,
           image: p.images ? p.images.join(', ') : p.image, 
           category: p.category, 
           description: p.description, 
           tags: p.tags || '', 
-          color: p.color || '' 
+          color: p.color || '',
+          sizeNote: p.sizeNote || '', // تحميل الملاحظة القديمة
+          fitType: p.fitType || 'Regular Fit'
       }); 
       setEditingId(p.id);
-      // نطلع لأول الصفحة عشان الفورم
       window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -141,10 +144,18 @@ const AdminDashboard = ({ user, products, orders, showNotification }) => {
                     <input required type="number" className="w-full p-3 bg-white border border-slate-200 rounded-xl outline-none" value={productForm.price} onChange={e => setProductForm({...productForm, price: e.target.value})} placeholder="EGP" />
                  </div>
                  <div>
-                    {/* حقل المخزون الجديد */}
                     <label className="text-[10px] font-bold text-slate-500 ml-1">Stock</label>
                     <input required type="number" className="w-full p-3 bg-white border border-slate-200 rounded-xl outline-none" value={productForm.stock} onChange={e => setProductForm({...productForm, stock: e.target.value})} placeholder="Qty" />
                  </div>
+              </div>
+
+              {/* Size & Fit Section (الجديد) */}
+              <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 space-y-2">
+                  <label className="text-xs font-bold text-slate-500 flex items-center gap-1"><Ruler size={12}/> Size & Fit</label>
+                  <select className="w-full p-2 bg-white border border-slate-200 rounded-lg text-sm outline-none" value={productForm.fitType} onChange={e => setProductForm({...productForm, fitType: e.target.value})}>
+                      {FITS.map(f => <option key={f} value={f}>{f}</option>)}
+                  </select>
+                  <input type="text" className="w-full p-2 bg-white border border-slate-200 rounded-lg text-sm outline-none" value={productForm.sizeNote} onChange={e => setProductForm({...productForm, sizeNote: e.target.value})} placeholder="Note (e.g. Model is 175cm wearing M)" />
               </div>
 
               <div className="relative">
@@ -175,7 +186,7 @@ const AdminDashboard = ({ user, products, orders, showNotification }) => {
               </div>
               <div className="flex gap-3 pt-2">
                 <button type="submit" className="flex-1 bg-violet-600 text-white py-3 rounded-xl hover:bg-violet-700 font-bold shadow-lg transition">{editingId ? 'Save' : 'Add'}</button>
-                {editingId && <button type="button" onClick={() => { setEditingId(null); setProductForm({ name: '', price: '', stock: '', image: '', category: 'Abayas', description: '', tags: '', color: '' }); }} className="bg-slate-100 text-slate-500 px-4 rounded-xl font-bold">Cancel</button>}
+                {editingId && <button type="button" onClick={() => { setEditingId(null); setProductForm({ name: '', price: '', stock: '', image: '', category: 'Abayas', description: '', tags: '', color: '', sizeNote: '', fitType: 'Regular Fit' }); }} className="bg-slate-100 text-slate-500 px-4 rounded-xl font-bold">Cancel</button>}
               </div>
             </form>
           </div>
@@ -189,11 +200,11 @@ const AdminDashboard = ({ user, products, orders, showNotification }) => {
                     <div className="font-bold text-slate-800 text-lg">{p.name}</div>
                     <div className="flex items-center gap-3">
                        <div className="text-violet-600 font-bold">{p.price} EGP</div>
-                       {/* عرض المخزون */}
                        <div className={`text-xs font-bold px-2 py-0.5 rounded-md flex items-center gap-1 ${!p.stock || p.stock <= 0 ? 'bg-red-100 text-red-600' : p.stock < 5 ? 'bg-amber-100 text-amber-600' : 'bg-green-100 text-green-600'}`}>
                           <Box size={12}/> {p.stock ? `${p.stock} Left` : 'Out of Stock'}
                        </div>
                     </div>
+                    {p.fitType && <span className="text-[10px] text-slate-400 block mt-1">Fit: {p.fitType}</span>}
                   </div>
                 </div>
                 <div className="flex gap-2">
@@ -206,7 +217,7 @@ const AdminDashboard = ({ user, products, orders, showNotification }) => {
         </div>
       )}
 
-      {/* ... (باقي التابات orders, promos, messages, analytics زي ما هي بدون تغيير) ... */}
+      {/* ... باقي التابات (orders, promos, etc) زي ما هي ... */}
       {activeTab === 'orders' && (
         <div className="space-y-6">
             <div className="bg-white/80 p-4 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-3">
@@ -245,8 +256,6 @@ const AdminDashboard = ({ user, products, orders, showNotification }) => {
             </div>
         </div>
       )}
-      
-      {/* ... (promos, messages, analytics موجودين زي ما هما) ... */}
       {activeTab === 'promos' && (
         <div className="grid md:grid-cols-2 gap-8">
             <div className="bg-white/80 p-6 md:p-8 rounded-3xl border border-white/60 shadow-lg h-fit">
@@ -270,7 +279,6 @@ const AdminDashboard = ({ user, products, orders, showNotification }) => {
             </div>
         </div>
       )}
-
       {activeTab === 'messages' && (
         <div className="grid gap-4">
           {messages.map(msg => (
@@ -290,7 +298,6 @@ const AdminDashboard = ({ user, products, orders, showNotification }) => {
           ))}
         </div>
       )}
-
       {activeTab === 'analytics' && (
         <div className="space-y-8 animate-fade-in">
           <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 md:gap-6">

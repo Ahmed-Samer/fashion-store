@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-// لاحظ هنا: استوردنا Home وسميناها HomeIcon عشان ميتعملش تضارب مع اسم الصفحة
 import { User, LogIn, ShoppingBag, Menu, X, Heart, Home as HomeIcon } from 'lucide-react';
 
 const Navbar = ({ user, cartCount, wishlistCount, handleLogin }) => {
@@ -8,7 +7,6 @@ const Navbar = ({ user, cartCount, wishlistCount, handleLogin }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const closeMenu = () => setIsMenuOpen(false);
-  // المستخدم مسجل لو موجود ومش "مجهول"
   const isLoggedIn = user && !user.isAnonymous;
 
   return (
@@ -43,9 +41,9 @@ const Navbar = ({ user, cartCount, wishlistCount, handleLogin }) => {
         </div>
 
         {/* ================= 2. RIGHT GROUP (Actions + Cart) ================= */}
-        <div className="flex items-center gap-3 md:gap-4">
+        <div className="flex items-center gap-2 md:gap-4">
           
-          {/* A. Mobile Home Icon (التعديل الجديد: أيقونة بدل كلمة) */}
+          {/* A. Mobile Home Icon */}
           <Link 
             to="/" 
             className="md:hidden p-1 text-slate-600 hover:text-violet-600 transition"
@@ -77,9 +75,8 @@ const Navbar = ({ user, cartCount, wishlistCount, handleLogin }) => {
 
           <div className="h-6 w-px bg-slate-200 hidden md:block"></div>
 
-          {/* D. User Profile / Login Button */}
-          
-          {/* --- Desktop Icon --- */}
+          {/* D. User Profile / Login Button (DESKTOP ONLY) */}
+          {/* شيلنا الجزء بتاع الموبايل من هنا نهائياً */}
           <button 
                 onClick={() => isLoggedIn ? navigate('/profile') : handleLogin()} 
                 className={`hidden md:block p-2 rounded-full transition ${isLoggedIn ? 'text-violet-600 bg-violet-50' : 'text-slate-400 hover:text-violet-600'}`}
@@ -87,27 +84,6 @@ const Navbar = ({ user, cartCount, wishlistCount, handleLogin }) => {
           >
                 <User size={20}/>
           </button>
-          
-          {/* --- Mobile Avatar/Button --- */}
-          {isLoggedIn ? (
-            <button 
-                onClick={() => { navigate('/profile'); closeMenu(); }} 
-                className="md:hidden w-8 h-8 rounded-full border border-slate-200 overflow-hidden flex-shrink-0"
-            >
-                {user.photoURL ? (
-                    <img src={user.photoURL} alt="User" className="w-full h-full object-cover" />
-                ) : (
-                    <div className="w-full h-full bg-slate-100 flex items-center justify-center text-slate-500"><User size={16}/></div>
-                )}
-            </button>
-          ) : (
-            <button 
-                onClick={() => { handleLogin(); closeMenu(); }} 
-                className="md:hidden px-3 py-1.5 bg-slate-900 text-white text-xs font-bold rounded-full shadow-md hover:bg-slate-800 transition flex items-center gap-1 whitespace-nowrap"
-            >
-               Login
-            </button>
-          )}
 
           {/* E. Menu Button (Mobile Only) */}
           <button 
@@ -123,6 +99,18 @@ const Navbar = ({ user, cartCount, wishlistCount, handleLogin }) => {
       {isMenuOpen && (
         <div className="md:hidden absolute top-20 left-0 w-full bg-white border-b border-slate-100 shadow-xl animate-fade-in-up">
           <div className="flex flex-col p-4 space-y-2">
+            
+            {/* 1. Login / Profile (موجود هنا بس للموبايل) */}
+            <button 
+                onClick={() => { isLoggedIn ? navigate('/profile') : handleLogin(); closeMenu(); }}
+                className={`flex items-center gap-3 p-3 rounded-xl font-bold text-sm w-full text-left mb-2 ${isLoggedIn ? 'bg-violet-50 text-violet-700' : 'bg-slate-900 text-white shadow-md'}`}
+            >
+                <User size={18}/> {isLoggedIn ? 'My Profile' : 'Login / Register'}
+            </button>
+
+            <hr className="border-slate-100 my-2"/>
+
+            {/* 2. Links */}
             {['About', 'Contact', 'Returns'].map(link => (
               <Link 
                 key={link} 
@@ -133,15 +121,6 @@ const Navbar = ({ user, cartCount, wishlistCount, handleLogin }) => {
                 <span>{link}</span>
               </Link>
             ))}
-            
-            <hr className="border-slate-100 my-2"/>
-            
-            <button 
-                onClick={() => { isLoggedIn ? navigate('/profile') : handleLogin(); closeMenu(); }}
-                className={`flex items-center gap-3 p-3 rounded-xl font-bold text-sm w-full text-left ${isLoggedIn ? 'bg-violet-50 text-violet-700' : 'bg-slate-50 text-slate-700'}`}
-            >
-                <User size={18}/> {isLoggedIn ? 'My Profile' : 'Login / Register'}
-            </button>
           </div>
         </div>
       )}
