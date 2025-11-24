@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { User, LogIn, ShoppingBag, Menu, X } from 'lucide-react';
+// لاحظ هنا: استوردنا Home وسميناها HomeIcon عشان ميتعملش تضارب مع اسم الصفحة
+import { User, LogIn, ShoppingBag, Menu, X, Heart, Home as HomeIcon } from 'lucide-react';
 
-const Navbar = ({ user, cartCount, handleLogin }) => {
+const Navbar = ({ user, cartCount, wishlistCount, handleLogin }) => {
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const closeMenu = () => setIsMenuOpen(false);
+  // المستخدم مسجل لو موجود ومش "مجهول"
   const isLoggedIn = user && !user.isAnonymous;
 
   return (
@@ -25,7 +27,7 @@ const Navbar = ({ user, cartCount, handleLogin }) => {
                 </span>
             </Link>
 
-            {/* B. Desktop Links */}
+            {/* B. Desktop Links (مخفي في الموبايل) */}
             <div className="hidden md:flex items-center gap-6">
                 {['Home', 'About', 'Contact', 'Returns'].map(link => (
                     <Link 
@@ -41,19 +43,43 @@ const Navbar = ({ user, cartCount, handleLogin }) => {
         </div>
 
         {/* ================= 2. RIGHT GROUP (Actions + Cart) ================= */}
-        <div className="flex items-center gap-3 md:gap-5">
+        <div className="flex items-center gap-3 md:gap-4">
           
-          {/* A. Mobile Home Text */}
+          {/* A. Mobile Home Icon (التعديل الجديد: أيقونة بدل كلمة) */}
           <Link 
             to="/" 
-            className="md:hidden text-sm font-bold text-slate-600 hover:text-violet-600 transition uppercase tracking-wide"
+            className="md:hidden p-1 text-slate-600 hover:text-violet-600 transition"
             onClick={closeMenu}
+            title="Home"
           >
-            Home
+            <HomeIcon size={24} />
           </Link>
 
-          {/* B. User Profile / Login Button */}
-          {/* --- Desktop --- */}
+          {/* B. Wishlist Icon */}
+          <div className="relative cursor-pointer group p-1" onClick={() => { navigate('/wishlist'); closeMenu(); }}>
+            <Heart className="text-slate-700 group-hover:text-red-500 transition" size={24}/>
+            {wishlistCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold shadow-sm border border-white animate-scale-in">
+                {wishlistCount}
+              </span>
+            )}
+          </div>
+
+          {/* C. Cart Icon */}
+          <div className="relative cursor-pointer group p-1" onClick={() => { navigate('/cart'); closeMenu(); }}>
+            <ShoppingBag className="text-slate-700 group-hover:text-violet-600 transition" size={24}/>
+            {cartCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-violet-600 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold shadow-sm border border-white animate-scale-in">
+                {cartCount}
+              </span>
+            )}
+          </div>
+
+          <div className="h-6 w-px bg-slate-200 hidden md:block"></div>
+
+          {/* D. User Profile / Login Button */}
+          
+          {/* --- Desktop Icon --- */}
           <button 
                 onClick={() => isLoggedIn ? navigate('/profile') : handleLogin()} 
                 className={`hidden md:block p-2 rounded-full transition ${isLoggedIn ? 'text-violet-600 bg-violet-50' : 'text-slate-400 hover:text-violet-600'}`}
@@ -62,7 +88,7 @@ const Navbar = ({ user, cartCount, handleLogin }) => {
                 <User size={20}/>
           </button>
           
-          {/* --- Mobile --- */}
+          {/* --- Mobile Avatar/Button --- */}
           {isLoggedIn ? (
             <button 
                 onClick={() => { navigate('/profile'); closeMenu(); }} 
@@ -82,22 +108,6 @@ const Navbar = ({ user, cartCount, handleLogin }) => {
                Login
             </button>
           )}
-
-          {/* تم حذف أيقونة الأدمن من هنا نهائياً 
-              Admin Link Removed
-          */}
-
-          <div className="h-6 w-px bg-slate-200 hidden md:block"></div>
-
-          {/* D. Cart Icon */}
-          <div className="relative cursor-pointer group p-1" onClick={() => { navigate('/cart'); closeMenu(); }}>
-            <ShoppingBag className="text-slate-700 group-hover:text-violet-600 transition" size={24}/>
-            {cartCount > 0 && (
-              <span className="absolute -top-1 -right-1 bg-violet-600 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold shadow-sm border border-white animate-scale-in">
-                {cartCount}
-              </span>
-            )}
-          </div>
 
           {/* E. Menu Button (Mobile Only) */}
           <button 
@@ -132,10 +142,6 @@ const Navbar = ({ user, cartCount, handleLogin }) => {
             >
                 <User size={18}/> {isLoggedIn ? 'My Profile' : 'Login / Register'}
             </button>
-
-            {/* تم حذف رابط الأدمن من قائمة الموبايل أيضاً
-                Admin Link Removed from Mobile Menu
-            */}
           </div>
         </div>
       )}
