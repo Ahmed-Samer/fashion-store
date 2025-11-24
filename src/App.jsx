@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, useNavigate, Navigate } from 'react-router-dom';
 import { onAuthStateChanged, signInAnonymously, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
-import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { collection, onSnapshot, query } from 'firebase/firestore'; // شلنا orderBy
 import { auth, db, getAppId } from './firebase';
 import { CheckCircle, XCircle } from 'lucide-react';
 
@@ -24,23 +24,21 @@ import UserProfile from './pages/UserProfile';
 import About from './pages/About';
 import Contact from './pages/Contact';
 import Returns from './pages/Returns';
-import Wishlist from './pages/Wishlist'; // 1. استيراد Wishlist
+import Wishlist from './pages/Wishlist';
 
 export default function App() {
   const [user, setUser] = useState(null);
   const [products, setProducts] = useState([]);
-  const [orders, setOrders] = useState([]);
+  // ❌ شلنا orders من هنا عشان ميعملش error للزوار
   const [isAdmin, setIsAdmin] = useState(false);
   const [notification, setNotification] = useState({ show: false, message: '', type: '' });
   const appId = getAppId();
 
-  // --- Cart Logic ---
   const [cart, setCart] = useState(() => {
     try { const saved = localStorage.getItem('fashion-store-cart'); return saved ? JSON.parse(saved) : []; } catch { return []; }
   });
   useEffect(() => { localStorage.setItem('fashion-store-cart', JSON.stringify(cart)); }, [cart]);
 
-  // --- Wishlist Logic (الجديد) ---
   const [wishlist, setWishlist] = useState(() => {
     try { const saved = localStorage.getItem('fashion-store-wishlist'); return saved ? JSON.parse(saved) : []; } catch { return []; }
   });
@@ -48,24 +46,19 @@ export default function App() {
 
   const toggleWishlist = (product) => {
     const exists = wishlist.find(p => p.id === product.id);
-    if (exists) {
-        setWishlist(wishlist.filter(p => p.id !== product.id));
-        showNotification('Removed from Wishlist 💔');
-    } else {
-        setWishlist([...wishlist, product]);
-        showNotification('Added to Wishlist ❤️');
-    }
+    if (exists) { setWishlist(wishlist.filter(p => p.id !== product.id)); showNotification('Removed from Wishlist 💔'); } 
+    else { setWishlist([...wishlist, product]); showNotification('Added to Wishlist ❤️'); }
   };
 
-  // --- Auth & Data ---
   useEffect(() => { signInAnonymously(auth).catch(console.error); const unsub = onAuthStateChanged(auth, setUser); return () => unsub(); }, []);
+
+  // هنا بنجيب المنتجات بس (لأنها Public عادي)
   useEffect(() => {
-    const unsubProd = onSnapshot(query(collection(db, 'artifacts', appId, 'public', 'data', 'products')), (s) => setProducts(s.docs.map(d => ({ id: d.id, ...d.data() }))));
-    const unsubOrd = onSnapshot(query(collection(db, 'artifacts', appId, 'public', 'data', 'orders'), orderBy('createdAt', 'desc')), (s) => setOrders(s.docs.map(d => ({ id: d.id, ...d.data() }))));
-    return () => { unsubProd(); unsubOrd(); };
+    const productsRef = collection(db, 'artifacts', appId, 'public', 'data', 'products');
+    const unsubProd = onSnapshot(query(productsRef), (s) => setProducts(s.docs.map(d => ({ id: d.id, ...d.data() }))));
+    return () => { unsubProd(); };
   }, [appId]);
 
-  // --- Handlers ---
   const addToCart = (itemOrItems, quantity = 1) => {
     let items = Array.isArray(itemOrItems) ? itemOrItems : [{...itemOrItems}];
     let newCart = [...cart];
@@ -77,6 +70,7 @@ export default function App() {
     setCart(newCart);
     showNotification(items.length > 1 ? 'Full Look added! ✨' : `Added to bag 👜`);
   };
+
   const updateCartQuantity = (i, c) => { const nc = [...cart]; const nq = nc[i].quantity + c; if (nq > 0) { nc[i].quantity = nq; setCart(nc); } };
   const removeFromCart = (i) => setCart(cart.filter((_, idx) => idx !== i));
   const calculateTotal = () => cart.reduce((t, i) => t + (Number(i.price) * i.quantity), 0);
@@ -88,7 +82,6 @@ export default function App() {
   return (
     <div className="min-h-screen font-sans text-slate-800 relative overflow-x-hidden selection:bg-violet-200 selection:text-violet-900" dir="ltr">
       <EnhancedBackground />
-      {/* مررنا wishlist للنافبار عشان نعرض العدد */}
       <Navbar user={user} cartCount={cart.reduce((a,i)=>a+i.quantity,0)} wishlistCount={wishlist.length} handleLogin={handleLogin} />
 
       <main className="relative z-10 min-h-[80vh] pt-4 pb-12">
@@ -104,7 +97,9 @@ export default function App() {
           <Route path="/contact" element={<><SEO title="Contact Us" /><Contact user={user} /></>} />
           <Route path="/returns" element={<><SEO title="Returns Policy" /><Returns /></>} />
           <Route path={SECRET_ADMIN_ROUTE} element={<><SEO title="Admin Login" /><AdminLogin setIsAdmin={setIsAdmin} /></>} />
-          <Route path="/admin" element={isAdmin ? <><SEO title="Dashboard" /><AdminDashboard user={user} products={products} orders={orders} showNotification={showNotification} /></> : <Navigate to="/" replace />} />
+          
+          {/* شلنا تمرير orders من هنا لأن الداشبورد هتجيبها بنفسها */}
+          <Route path="/admin" element={isAdmin ? <><SEO title="Dashboard" /><AdminDashboard user={user} products={products} showNotification={showNotification} /></> : <Navigate to="/" replace />} />
         </Routes>
       </main>
       <AIStylist products={products} addToCart={addToCart} />
