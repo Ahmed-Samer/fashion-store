@@ -25,7 +25,7 @@ import About from './pages/About';
 import Contact from './pages/Contact';
 import Returns from './pages/Returns';
 import Wishlist from './pages/Wishlist';
-
+import TrackOrder from './pages/TrackOrder';
 export default function App() {
   const [user, setUser] = useState(null);
   const [products, setProducts] = useState([]);
@@ -97,7 +97,7 @@ export default function App() {
           <Route path="/contact" element={<><SEO title="Contact Us" /><Contact user={user} /></>} />
           <Route path="/returns" element={<><SEO title="Returns Policy" /><Returns /></>} />
           <Route path={SECRET_ADMIN_ROUTE} element={<><SEO title="Admin Login" /><AdminLogin setIsAdmin={setIsAdmin} /></>} />
-          
+          <Route path="/track-order" element={<><SEO title="Track Order" /><TrackOrder /></>} />          
           {/* شلنا تمرير orders من هنا لأن الداشبورد هتجيبها بنفسها */}
           <Route path="/admin" element={isAdmin ? <><SEO title="Dashboard" /><AdminDashboard user={user} products={products} showNotification={showNotification} /></> : <Navigate to="/" replace />} />
         </Routes>

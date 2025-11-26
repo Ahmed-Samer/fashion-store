@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight, Truck, TicketPercent } from 'lucide-react';
-import { collection, addDoc, query, where, getDocs, writeBatch, doc, increment } from 'firebase/firestore'; // استيراد batch و increment
+import { collection, query, where, getDocs, writeBatch, doc, increment, setDoc } from 'firebase/firestore'; // لاحظ استيراد setDoc
 import { db, getAppId } from '../firebase';
 
 const governorates = ["Cairo", "Giza", "Alexandria", "Dakahlia", "Red Sea", "Beheira", "Fayoum", "Gharbia", "Ismailia", "Monufia", "Minya", "Qalyubia", "New Valley", "Suez", "Aswan", "Assiut", "Beni Suef", "Port Said", "Damietta", "Sharqia", "South Sinai", "Kafr El Sheikh", "Matruh", "Luxor", "Qena", "North Sinai", "Sohag"];
@@ -36,10 +36,13 @@ const Checkout = ({ user, cart, calculateTotal, setCart, showNotification }) => 
         if (form.phone.length < 11) { showNotification('رقم هاتف غير صحيح', 'error'); return; }
 
         setSubmitting(true);
-        const shortId = '#' + Math.floor(100000 + Math.random() * 900000);
+        
+        // 1. توليد رقم للأوردر (نفسه هو مفتاح المستند)
+        const orderNum = Math.floor(100000 + Math.random() * 900000).toString(); // "123456"
+        const displayId = '#' + orderNum; // "#123456" للعرض فقط
 
         const orderData = { 
-            orderId: shortId, 
+            orderId: displayId, 
             customer: form,   
             items: cart, 
             total: finalTotal, 
@@ -51,25 +54,22 @@ const Checkout = ({ user, cart, calculateTotal, setCart, showNotification }) => 
         };
 
         try {
-            // 1. استخدام Batch عشان ننفذ كذا عملية مع بعض
             const batch = writeBatch(db);
 
-            // 2. إضافة الأوردر للداتابيز
-            const newOrderRef = doc(collection(db, 'artifacts', appId, 'public', 'data', 'orders'));
+            // 2. استخدام setDoc بدلاً من addDoc عشان نحدد إحنا اسم الملف (orderNum)
+            // ده هيسهل علينا البحث جداً في صفحة التتبع
+            const newOrderRef = doc(db, 'artifacts', appId, 'public', 'data', 'orders', orderNum);
             batch.set(newOrderRef, orderData);
 
-            // 3. خصم الكميات من المنتجات
             cart.forEach(item => {
                 const productRef = doc(db, 'artifacts', appId, 'public', 'data', 'products', item.id);
-                // increment(-item.quantity) بتقلل العدد
                 batch.update(productRef, { stock: increment(-item.quantity) });
             });
 
-            // 4. تنفيذ كل حاجة مرة واحدة
             await batch.commit();
 
             setCart([]); 
-            navigate('/thank-you', { state: { orderId: shortId } });
+            navigate('/thank-you', { state: { orderId: displayId } });
             
         } catch(e) {
             showNotification('حدث خطأ أثناء الطلب', 'error');
