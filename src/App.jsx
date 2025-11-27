@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, useNavigate, Navigate, useLocation } from 'react-router-dom'; // 1. ضفنا useLocation
+import { Routes, Route, useNavigate, Navigate, useLocation } from 'react-router-dom';
 import { onAuthStateChanged, signInAnonymously, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { collection, onSnapshot, query } from 'firebase/firestore';
 import { auth, db, getAppId } from './firebase';
 import { CheckCircle, XCircle } from 'lucide-react';
-import { AnimatePresence } from 'framer-motion'; // 2. استدعاء مكتبة الحركة
+import { AnimatePresence } from 'framer-motion';
 
 // Components
 import Navbar from './components/Navbar';
@@ -12,7 +12,8 @@ import Footer from './components/Footer';
 import EnhancedBackground from './components/EnhancedBackground';
 import AIStylist from './components/AIStylist';
 import SEO from './components/SEO';
-import PageTransition from './components/PageTransition'; // 3. استدعاء المكون الجديد
+import PageTransition from './components/PageTransition';
+import ScrollToTop from './components/ScrollToTop'; // 1. استدعاء المكون السحري
 
 // Pages
 import Home from './pages/Home';
@@ -36,7 +37,6 @@ export default function App() {
   const [notification, setNotification] = useState({ show: false, message: '', type: '' });
   const appId = getAppId();
   
-  // 4. لازم نعرف مكاننا فين عشان الأنيميشن يشتغل
   const location = useLocation();
 
   const [cart, setCart] = useState(() => {
@@ -85,15 +85,14 @@ export default function App() {
 
   return (
     <div className="min-h-screen font-sans text-slate-800 relative overflow-x-hidden selection:bg-violet-200 selection:text-violet-900" dir="ltr">
+      <ScrollToTop /> {/* 2. المكون هنا هيشتغل مع كل تغيير للصفحة */}
       <EnhancedBackground />
       <Navbar user={user} cartCount={cart.reduce((a,i)=>a+i.quantity,0)} wishlistCount={wishlist.length} handleLogin={handleLogin} />
 
       <main className="relative z-10 min-h-[80vh] pt-4 pb-12">
-        {/* 5. تغليف الراوتر بـ AnimatePresence عشان يدير الخروج والدخول */}
         <AnimatePresence mode="wait">
             <Routes location={location} key={location.pathname}>
             
-            {/* 6. تغليف كل صفحة بـ PageTransition */}
             <Route path="/" element={<PageTransition><SEO title="Home" /><Home products={products} addToCart={addToCart} wishlist={wishlist} toggleWishlist={toggleWishlist} /></PageTransition>} />
             <Route path="/product/:id" element={<PageTransition><ProductDetails products={products} addToCart={addToCart} /></PageTransition>} />
             <Route path="/cart" element={<PageTransition><SEO title="My Bag" /><Cart cart={cart} updateCartQuantity={updateCartQuantity} removeFromCart={removeFromCart} calculateTotal={calculateTotal} /></PageTransition>} />
