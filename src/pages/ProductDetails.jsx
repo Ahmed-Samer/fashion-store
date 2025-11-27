@@ -1,6 +1,8 @@
 import React, { useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowRight, Minus, Plus, ShoppingBag, Rocket, Star, Box, Ruler, X } from 'lucide-react';
+import { ArrowRight, Minus, Plus, ShoppingBag, Rocket, Ruler, X, Box, Star } from 'lucide-react';
+// تم تعديل المسار بناءً على السكرين شوت
+import { SIZE_CHARTS } from '../utils/sizeData'; 
 
 const ProductDetails = ({ products, addToCart }) => {
     const { id } = useParams();
@@ -9,6 +11,8 @@ const ProductDetails = ({ products, addToCart }) => {
     const [activeImg, setActiveImg] = useState(0);
     const [showSizeGuide, setShowSizeGuide] = useState(false); // حالة النافذة
     const scrollRef = useRef(null);
+    
+    // State for Dragging functionality
     const [isDragging, setIsDragging] = useState(false);
     const [startX, setStartX] = useState(0);
     const [scrollLeft, setScrollLeft] = useState(0);
@@ -22,7 +26,10 @@ const ProductDetails = ({ products, addToCart }) => {
     const stock = selectedProduct.stock || 0;
     const isOutOfStock = stock <= 0;
 
-    // منتجات مقترحة
+    // استدعاء جدول المقاسات المناسب
+    const sizeChart = SIZE_CHARTS[selectedProduct.category];
+
+    // منتجات مقترحة (Related)
     let related = [];
     if (selectedProduct) {
         related = products.filter(p => p.category === selectedProduct.category && p.id !== selectedProduct.id).slice(0, 4);
@@ -30,6 +37,8 @@ const ProductDetails = ({ products, addToCart }) => {
     }
 
     const handleBuyNow = () => { addToCart(selectedProduct, qty); navigate('/checkout'); };
+    
+    // دوال السكرول والسحب (Carousel Logic)
     const handleScroll = () => { if (scrollRef.current) { const index = Math.round(scrollRef.current.scrollLeft / scrollRef.current.offsetWidth); setActiveImg(index); } };
     const startDragging = (e) => { setIsDragging(true); setStartX(e.pageX - scrollRef.current.offsetLeft); setScrollLeft(scrollRef.current.scrollLeft); };
     const stopDragging = () => setIsDragging(false);
@@ -61,7 +70,7 @@ const ProductDetails = ({ products, addToCart }) => {
                     }
                   </div>
                   
-                  {/* زرار دليل المقاسات (يظهر دايماً الآن) */}
+                  {/* زرار دليل المقاسات */}
                   <button onClick={() => setShowSizeGuide(true)} className="flex items-center gap-1 text-xs font-bold text-slate-500 hover:text-violet-600 transition border-b border-slate-300 hover:border-violet-600 pb-0.5">
                       <Ruler size={14}/> Size Guide
                   </button>
@@ -96,7 +105,6 @@ const ProductDetails = ({ products, addToCart }) => {
             )}
           </div>
         </div>
-        
         {/* Related Products */}
         <div className="border-t border-slate-200 pt-12 md:pt-16">
             <h2 className="text-2xl md:text-3xl font-bold mb-8 md:mb-10 text-slate-800">{related.length > 0 ? 'Check These Out' : 'You Might Also Like'}</h2>
@@ -113,7 +121,7 @@ const ProductDetails = ({ products, addToCart }) => {
             </div>
         </div>
 
-        {/* ==================== Size Guide Modal (جدول ثابت) ==================== */}
+        {/* ==================== Size Guide Modal (Dynamic) ==================== */}
         {showSizeGuide && (
             <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
                 <div className="bg-white rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl animate-scale-in relative">
@@ -131,43 +139,39 @@ const ProductDetails = ({ products, addToCart }) => {
                             </div>
                         )}
 
-                        {/* The Static Table (عدل الأرقام دي براحتك هنا) */}
-                        <div className="overflow-x-auto rounded-xl border border-slate-200">
-                            <table className="w-full text-sm text-left text-slate-600">
-                                <thead className="text-xs text-slate-700 uppercase bg-slate-100">
-                                    <tr>
-                                        <th className="px-4 py-3">Size</th>
-                                        <th className="px-4 py-3">Chest (cm)</th>
-                                        <th className="px-4 py-3">Length (cm)</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr className="bg-white border-b border-slate-100 hover:bg-slate-50">
-                                        <td className="px-4 py-3 font-bold text-slate-900">M</td>
-                                        <td className="px-4 py-3">54</td>
-                                        <td className="px-4 py-3">70</td>
-                                    </tr>
-                                    <tr className="bg-white border-b border-slate-100 hover:bg-slate-50">
-                                        <td className="px-4 py-3 font-bold text-slate-900">L</td>
-                                        <td className="px-4 py-3">56</td>
-                                        <td className="px-4 py-3">72</td>
-                                    </tr>
-                                    <tr className="bg-white border-b border-slate-100 hover:bg-slate-50">
-                                        <td className="px-4 py-3 font-bold text-slate-900">XL</td>
-                                        <td className="px-4 py-3">58</td>
-                                        <td className="px-4 py-3">74</td>
-                                    </tr>
-                                    <tr className="bg-white hover:bg-slate-50">
-                                        <td className="px-4 py-3 font-bold text-slate-900">XXL</td>
-                                        <td className="px-4 py-3">60</td>
-                                        <td className="px-4 py-3">76</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
+                        {/* Dynamic Table Rendering */}
+                        {sizeChart ? (
+                            <div className="overflow-x-auto rounded-xl border border-slate-200">
+                                <table className="w-full text-sm text-left text-slate-600">
+                                    <thead className="text-xs text-slate-700 uppercase bg-slate-100">
+                                        <tr>
+                                            {sizeChart.columns.map((col, i) => (
+                                                <th key={i} className="px-4 py-3">{col}</th>
+                                            ))}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {sizeChart.rows.map((row, i) => (
+                                            <tr key={i} className="bg-white border-b border-slate-100 hover:bg-slate-50">
+                                                {row.map((cell, j) => (
+                                                    <td key={j} className={`px-4 py-3 ${j === 0 ? 'font-bold text-slate-900' : ''}`}>
+                                                        {cell}
+                                                    </td>
+                                                ))}
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ) : (
+                            <div className="text-center py-8 text-slate-500 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                                <p>Standard Size Chart unavailable for this category.</p>
+                                <p className="text-sm mt-1">Please refer to the product description.</p>
+                            </div>
+                        )}
                         
                         <div className="mt-6 text-xs text-slate-400 text-center">
-                            * This is a general size chart. Measurements may vary slightly.
+                            * Measurements are in CM. Allow 1-2cm difference.
                         </div>
                     </div>
                 </div>
