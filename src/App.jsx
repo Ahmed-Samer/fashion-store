@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, useNavigate, Navigate } from 'react-router-dom';
+import { Routes, Route, useNavigate, Navigate, useLocation } from 'react-router-dom'; // 1. ضفنا useLocation
 import { onAuthStateChanged, signInAnonymously, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
-import { collection, onSnapshot, query } from 'firebase/firestore'; // شلنا orderBy
+import { collection, onSnapshot, query } from 'firebase/firestore';
 import { auth, db, getAppId } from './firebase';
 import { CheckCircle, XCircle } from 'lucide-react';
+import { AnimatePresence } from 'framer-motion'; // 2. استدعاء مكتبة الحركة
 
 // Components
 import Navbar from './components/Navbar';
@@ -11,6 +12,7 @@ import Footer from './components/Footer';
 import EnhancedBackground from './components/EnhancedBackground';
 import AIStylist from './components/AIStylist';
 import SEO from './components/SEO';
+import PageTransition from './components/PageTransition'; // 3. استدعاء المكون الجديد
 
 // Pages
 import Home from './pages/Home';
@@ -26,13 +28,16 @@ import Contact from './pages/Contact';
 import Returns from './pages/Returns';
 import Wishlist from './pages/Wishlist';
 import TrackOrder from './pages/TrackOrder';
+
 export default function App() {
   const [user, setUser] = useState(null);
   const [products, setProducts] = useState([]);
-  // ❌ شلنا orders من هنا عشان ميعملش error للزوار
   const [isAdmin, setIsAdmin] = useState(false);
   const [notification, setNotification] = useState({ show: false, message: '', type: '' });
   const appId = getAppId();
+  
+  // 4. لازم نعرف مكاننا فين عشان الأنيميشن يشتغل
+  const location = useLocation();
 
   const [cart, setCart] = useState(() => {
     try { const saved = localStorage.getItem('fashion-store-cart'); return saved ? JSON.parse(saved) : []; } catch { return []; }
@@ -52,7 +57,6 @@ export default function App() {
 
   useEffect(() => { signInAnonymously(auth).catch(console.error); const unsub = onAuthStateChanged(auth, setUser); return () => unsub(); }, []);
 
-  // هنا بنجيب المنتجات بس (لأنها Public عادي)
   useEffect(() => {
     const productsRef = collection(db, 'artifacts', appId, 'public', 'data', 'products');
     const unsubProd = onSnapshot(query(productsRef), (s) => setProducts(s.docs.map(d => ({ id: d.id, ...d.data() }))));
@@ -85,22 +89,27 @@ export default function App() {
       <Navbar user={user} cartCount={cart.reduce((a,i)=>a+i.quantity,0)} wishlistCount={wishlist.length} handleLogin={handleLogin} />
 
       <main className="relative z-10 min-h-[80vh] pt-4 pb-12">
-        <Routes>
-          <Route path="/" element={<><SEO title="Home" /><Home products={products} addToCart={addToCart} wishlist={wishlist} toggleWishlist={toggleWishlist} /></>} />
-          <Route path="/product/:id" element={<><ProductDetails products={products} addToCart={addToCart} /></>} />
-          <Route path="/cart" element={<><SEO title="My Bag" /><Cart cart={cart} updateCartQuantity={updateCartQuantity} removeFromCart={removeFromCart} calculateTotal={calculateTotal} /></>} />
-          <Route path="/wishlist" element={<><SEO title="My Wishlist" /><Wishlist wishlist={wishlist} removeFromWishlist={(id) => toggleWishlist({id})} addToCart={addToCart} /></>} />
-          <Route path="/checkout" element={<><SEO title="Checkout" /><Checkout user={user} cart={cart} calculateTotal={calculateTotal} setCart={setCart} showNotification={showNotification} /></>} />
-          <Route path="/thank-you" element={<ThankYou />} />
-          <Route path="/profile" element={<><SEO title="Profile" /><UserProfile user={user} showNotification={showNotification} /></>} />
-          <Route path="/about" element={<><SEO title="Our Story" /><About /></>} />
-          <Route path="/contact" element={<><SEO title="Contact Us" /><Contact user={user} /></>} />
-          <Route path="/returns" element={<><SEO title="Returns Policy" /><Returns /></>} />
-          <Route path={SECRET_ADMIN_ROUTE} element={<><SEO title="Admin Login" /><AdminLogin setIsAdmin={setIsAdmin} /></>} />
-          <Route path="/track-order" element={<><SEO title="Track Order" /><TrackOrder /></>} />          
-          {/* شلنا تمرير orders من هنا لأن الداشبورد هتجيبها بنفسها */}
-          <Route path="/admin" element={isAdmin ? <><SEO title="Dashboard" /><AdminDashboard user={user} products={products} showNotification={showNotification} /></> : <Navigate to="/" replace />} />
-        </Routes>
+        {/* 5. تغليف الراوتر بـ AnimatePresence عشان يدير الخروج والدخول */}
+        <AnimatePresence mode="wait">
+            <Routes location={location} key={location.pathname}>
+            
+            {/* 6. تغليف كل صفحة بـ PageTransition */}
+            <Route path="/" element={<PageTransition><SEO title="Home" /><Home products={products} addToCart={addToCart} wishlist={wishlist} toggleWishlist={toggleWishlist} /></PageTransition>} />
+            <Route path="/product/:id" element={<PageTransition><ProductDetails products={products} addToCart={addToCart} /></PageTransition>} />
+            <Route path="/cart" element={<PageTransition><SEO title="My Bag" /><Cart cart={cart} updateCartQuantity={updateCartQuantity} removeFromCart={removeFromCart} calculateTotal={calculateTotal} /></PageTransition>} />
+            <Route path="/wishlist" element={<PageTransition><SEO title="My Wishlist" /><Wishlist wishlist={wishlist} removeFromWishlist={(id) => toggleWishlist({id})} addToCart={addToCart} /></PageTransition>} />
+            <Route path="/checkout" element={<PageTransition><SEO title="Checkout" /><Checkout user={user} cart={cart} calculateTotal={calculateTotal} setCart={setCart} showNotification={showNotification} /></PageTransition>} />
+            <Route path="/thank-you" element={<PageTransition><ThankYou /></PageTransition>} />
+            <Route path="/profile" element={<PageTransition><SEO title="Profile" /><UserProfile user={user} showNotification={showNotification} /></PageTransition>} />
+            <Route path="/about" element={<PageTransition><SEO title="Our Story" /><About /></PageTransition>} />
+            <Route path="/contact" element={<PageTransition><SEO title="Contact Us" /><Contact user={user} /></PageTransition>} />
+            <Route path="/returns" element={<PageTransition><SEO title="Returns Policy" /><Returns /></PageTransition>} />
+            <Route path="/track-order" element={<PageTransition><SEO title="Track Order" /><TrackOrder /></PageTransition>} />
+            <Route path={SECRET_ADMIN_ROUTE} element={<PageTransition><SEO title="Admin Login" /><AdminLogin setIsAdmin={setIsAdmin} /></PageTransition>} />
+            <Route path="/admin" element={isAdmin ? <PageTransition><SEO title="Dashboard" /><AdminDashboard user={user} products={products} showNotification={showNotification} /></PageTransition> : <Navigate to="/" replace />} />
+            
+            </Routes>
+        </AnimatePresence>
       </main>
       <AIStylist products={products} addToCart={addToCart} />
       <Footer />
