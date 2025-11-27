@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://fashion-store-five-phi.vercel.app/sitemap.xml
