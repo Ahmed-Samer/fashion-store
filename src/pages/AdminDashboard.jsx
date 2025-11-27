@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Package, Layers, Users, TrendingUp, DollarSign, TicketPercent, 
-  Trash2, Loader2, Wand2, Sparkles, Edit, Palette, Tag, Upload, Image as ImageIcon, Search, Phone, MapPin, MessageCircle, Box, Ruler
+  Trash2, Loader2, Wand2, Sparkles, Edit, Palette, Tag, Upload, Image as ImageIcon, Search, Phone, MapPin, MessageCircle, Box, Ruler, Star, MessageSquare
 } from 'lucide-react';
 import { collection, addDoc, deleteDoc, updateDoc, doc, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { db, getAppId } from '../firebase';
@@ -36,6 +36,7 @@ const AdminDashboard = ({ user, products, showNotification }) => {
   const [promoCodes, setPromoCodes] = useState([]);
   const [messages, setMessages] = useState([]);
   const [orders, setOrders] = useState([]); 
+  const [reviews, setReviews] = useState([]); // 1. New State for Reviews
   const [searchTerm, setSearchTerm] = useState('');
 
   const [isGeneratingDesc, setIsGeneratingDesc] = useState(false);
@@ -54,42 +55,35 @@ const AdminDashboard = ({ user, products, showNotification }) => {
     const messagesRef = collection(db, 'artifacts', appId, 'public', 'data', 'messages');
     const promosRef = collection(db, 'artifacts', appId, 'public', 'data', 'promo_codes');
     const ordersRef = collection(db, 'artifacts', appId, 'public', 'data', 'orders');
+    const reviewsRef = collection(db, 'artifacts', appId, 'public', 'data', 'reviews'); // 2. Review Ref
     
     const unsubMsg = onSnapshot(query(messagesRef, orderBy('createdAt', 'desc')), (s) => setMessages(s.docs.map(d => ({ id: d.id, ...d.data() }))));
     const unsubPromos = onSnapshot(query(promosRef, orderBy('createdAt', 'desc')), (s) => setPromoCodes(s.docs.map(d => ({ id: d.id, ...d.data() }))));
     const unsubOrders = onSnapshot(query(ordersRef, orderBy('createdAt', 'desc')), (s) => setOrders(s.docs.map(d => ({ id: d.id, ...d.data() }))));
+    const unsubReviews = onSnapshot(query(reviewsRef, orderBy('createdAt', 'desc')), (s) => setReviews(s.docs.map(d => ({ id: d.id, ...d.data() })))); // 3. Fetch Reviews
     
-    return () => { unsubMsg(); unsubPromos(); unsubOrders(); };
+    return () => { unsubMsg(); unsubPromos(); unsubOrders(); unsubReviews(); };
   }, [user, appId]);
 
-  // --- WhatsApp Helper ---
+  // --- Functions ---
   const getWhatsAppLink = (order) => {
     let phone = order.customer?.phone || "";
     if (phone.startsWith("0")) phone = phone.substring(1);
     phone = "+20" + phone;
-    
     let itemsText = "";
     if (order.items && order.items.length > 0) {
         itemsText = order.items.map(item => `- ${item.name} (عدد: ${item.quantity})`).join("\n");
     }
-    
     const message = `أهلاً بك يا ${order.customer?.name.split(' ')[0]} 👋\nبخصوص طلبك رقم: ${order.orderId}\nمن Modern Style ✨\n\n*تفاصيل الطلب:*\n${itemsText}\n\n*الإجمالي:* ${order.total} EGP\n\nهل البيانات صحيحة؟ 🚚`;
     return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
   };
 
-  // --- AI Functions ---
   const handleGenerateDescription = async () => {
-    if (!productForm.name || !productForm.category) { 
-        showNotification('Please enter name and category first', 'error'); 
-        return; 
-    }
+    if (!productForm.name || !productForm.category) { showNotification('Please enter name and category first', 'error'); return; }
     setIsGeneratingDesc(true);
     const prompt = `Write a creative Arabic product description. Name: ${productForm.name}, Category: ${productForm.category}, Price: ${productForm.price}. Tone: Trendy Egyptian.`;
     const desc = await callGeminiAPI(prompt);
-    if (desc) { 
-        setProductForm(prev => ({ ...prev, description: desc.trim() })); 
-        showNotification('Description Generated ✨'); 
-    }
+    if (desc) { setProductForm(prev => ({ ...prev, description: desc.trim() })); showNotification('Description Generated ✨'); }
     setIsGeneratingDesc(false);
   };
 
@@ -98,10 +92,7 @@ const AdminDashboard = ({ user, products, showNotification }) => {
     setIsGeneratingTags(true);
     const prompt = `5 style tags for: ${productForm.name} (${productForm.category}). Comma separated.`;
     const tags = await callGeminiAPI(prompt);
-    if (tags) { 
-        setProductForm(prev => ({ ...prev, tags: tags.trim() })); 
-        showNotification('Tags Generated ✨'); 
-    }
+    if (tags) { setProductForm(prev => ({ ...prev, tags: tags.trim() })); showNotification('Tags Generated ✨'); }
     setIsGeneratingTags(false);
   };
 
@@ -109,112 +100,67 @@ const AdminDashboard = ({ user, products, showNotification }) => {
     setGeneratingReplyId(msg.id);
     const prompt = `Reply to customer as Modern Style support: "${msg.content}". Language: Arabic/English matching user.`;
     const reply = await callGeminiAPI(prompt);
-    if (reply) { 
-        setGeneratedReplies(prev => ({...prev, [msg.id]: reply.trim()})); 
-        showNotification('Drafted 📝'); 
-    }
+    if (reply) { setGeneratedReplies(prev => ({...prev, [msg.id]: reply.trim()})); showNotification('Drafted 📝'); }
     setGeneratingReplyId(null);
   };
 
-  // --- Image Upload (ImgBB) ---
   const handleImageUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-
     setIsUploading(true);
     const formData = new FormData();
     formData.append("image", file);
-
     try {
         const apiKey = import.meta.env.VITE_IMGBB_API_KEY;
         const response = await fetch(`https://api.imgbb.com/1/upload?key=${apiKey}`, { method: "POST", body: formData });
         const data = await response.json();
-
         if (data.success) {
             const url = data.data.url;
             setProductForm(prev => ({ ...prev, image: prev.image ? `${prev.image}, ${url}` : url }));
             showNotification('Uploaded! 🖼️');
-        } else {
-            throw new Error("Failed");
-        }
-    } catch (error) {
-        console.error(error);
-        showNotification('Upload Failed', 'error');
-    }
+        } else { throw new Error("Failed"); }
+    } catch (error) { console.error(error); showNotification('Upload Failed', 'error'); }
     setIsUploading(false);
   };
 
-  // --- Product CRUD ---
   const handleSaveProduct = async (e) => {
     e.preventDefault();
     if (!user) { alert("Please refresh."); return; }
-    
     try {
       const rawImage = productForm.image || '';
       const imageList = rawImage.split(',').map(url => url.trim()).filter(url => url);
       const mainImage = imageList[0] || 'https://placehold.co/400';
-      
-      const data = { 
-          ...productForm, 
-          price: Number(productForm.price), 
-          stock: Number(productForm.stock),
-          image: mainImage, 
-          images: imageList, 
-          updatedAt: new Date().toISOString() 
-      };
-
-      if (editingId) {
-          await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'products', editingId), data);
-          showNotification('Updated! ✅');
-      } else {
-          await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'products'), { ...data, createdAt: new Date().toISOString() });
-          showNotification('Added! 🎉');
-      }
-      
+      const data = { ...productForm, price: Number(productForm.price), stock: Number(productForm.stock), image: mainImage, images: imageList, updatedAt: new Date().toISOString() };
+      if (editingId) { await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'products', editingId), data); showNotification('Updated! ✅'); } 
+      else { await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'products'), { ...data, createdAt: new Date().toISOString() }); showNotification('Added! 🎉'); }
       setProductForm({ name: '', price: '', stock: '', image: '', category: 'Abayas', description: '', tags: '', color: '', sizeNote: '', fitType: 'Regular Fit' });
       setEditingId(null);
-    } catch (error) {
-        alert(`Error: ${error.message}`);
-    }
+    } catch (error) { alert(`Error: ${error.message}`); }
   };
 
   const startEditing = (p) => {
-      setProductForm({ 
-          name: p.name, price: p.price, stock: p.stock || 0,
-          image: p.images ? p.images.join(', ') : p.image, category: p.category, 
-          description: p.description, tags: p.tags || '', color: p.color || '',
-          sizeNote: p.sizeNote || '', fitType: p.fitType || 'Regular Fit'
-      });
+      setProductForm({ name: p.name, price: p.price, stock: p.stock || 0, image: p.images ? p.images.join(', ') : p.image, category: p.category, description: p.description, tags: p.tags || '', color: p.color || '', sizeNote: p.sizeNote || '', fitType: p.fitType || 'Regular Fit' });
       setEditingId(p.id);
       window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleDeleteProduct = async (id) => {
-      if(window.confirm('Delete?')) await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'products', id));
-  };
-
-  // --- Promo CRUD ---
+  const handleDeleteProduct = async (id) => { if(window.confirm('Delete?')) await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'products', id)); };
+  
   const handleSavePromo = async (e) => {
       e.preventDefault();
-      try {
-          await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'promo_codes'), { 
-              code: promoForm.code.toUpperCase().trim(), 
-              discount: Number(promoForm.discount), 
-              createdAt: new Date().toISOString() 
-          });
-          setPromoForm({ code: '', discount: '' });
-          showNotification('Promo Created 🎟️');
-      } catch(e) {}
+      try { await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'promo_codes'), { code: promoForm.code.toUpperCase().trim(), discount: Number(promoForm.discount), createdAt: new Date().toISOString() }); setPromoForm({ code: '', discount: '' }); showNotification('Promo Created 🎟️'); } catch(e) {}
+  };
+  const handleDeletePromo = async (id) => { if(window.confirm('Delete Promo?')) await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'promo_codes', id)); };
+  
+  // 4. Delete Review Function
+  const handleDeleteReview = async (id) => {
+      if(window.confirm('Are you sure you want to delete this review?')) {
+          await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'reviews', id));
+          showNotification('Review deleted 🗑️');
+      }
   };
 
-  const handleDeletePromo = async (id) => {
-      if(window.confirm('Delete Promo?')) await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'promo_codes', id));
-  };
-
-  // --- Order Updates ---
-  const handleUpdateStatus = async (oid, st) => {
-      await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'orders', oid), { status: st });
-  };
+  const handleUpdateStatus = async (oid, st) => { await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'orders', oid), { status: st }); };
 
   // --- Analytics ---
   const deliveredOrders = orders.filter(o => o.status === 'Delivered');
@@ -231,11 +177,7 @@ const AdminDashboard = ({ user, products, showNotification }) => {
       setIsGeneratingReport(false);
   };
 
-  const filteredOrders = orders.filter(o => 
-      o.orderId?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      o.customer?.phone?.includes(searchTerm) || 
-      o.customer?.name?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredOrders = orders.filter(o => o.orderId?.toLowerCase().includes(searchTerm.toLowerCase()) || o.customer?.phone?.includes(searchTerm) || o.customer?.name?.toLowerCase().includes(searchTerm.toLowerCase()));
 
   return (
     <div className="p-4 md:p-6 max-w-7xl mx-auto animate-fade-in min-h-screen">
@@ -244,7 +186,8 @@ const AdminDashboard = ({ user, products, showNotification }) => {
       <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4 bg-white/70 dark:bg-slate-800/70 backdrop-blur-md p-4 md:p-6 rounded-3xl shadow-sm border border-white/60 dark:border-slate-700 transition-colors">
         <h2 className="text-2xl md:text-3xl font-bold text-slate-800 dark:text-white flex items-center gap-2">Dashboard <span className="text-violet-500 text-sm bg-violet-100 dark:bg-violet-900/30 px-2 py-1 rounded-lg border border-violet-200 dark:border-violet-800">Admin</span></h2>
         <div className="flex flex-wrap gap-2 bg-slate-100/50 dark:bg-slate-700/50 p-1.5 rounded-xl border border-slate-200/50 dark:border-slate-600/50">
-          {['orders', 'products', 'promos', 'analytics', 'messages'].map(tab => (
+          {/* 5. Added 'reviews' tab */}
+          {['orders', 'products', 'reviews', 'promos', 'analytics', 'messages'].map(tab => (
             <button key={tab} onClick={() => setActiveTab(tab)} className={`px-3 py-2 md:px-5 md:py-2.5 rounded-lg font-bold text-xs md:text-sm transition capitalize ${activeTab === tab ? 'bg-white dark:bg-slate-600 text-violet-600 dark:text-white shadow-md transform scale-105' : 'hover:bg-white/50 dark:hover:bg-slate-600/50 text-slate-500 dark:text-slate-400'}`}>{tab}</button>
           ))}
         </div>
@@ -260,71 +203,27 @@ const AdminDashboard = ({ user, products, showNotification }) => {
               <input required type="text" className="w-full p-3 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl outline-none dark:text-white placeholder:text-slate-400" value={productForm.name} onChange={e => setProductForm({...productForm, name: e.target.value})} placeholder="Name" />
               
               <div className="grid grid-cols-2 gap-2">
-                 <div>
-                    <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 ml-1">Price</label>
-                    <input required type="number" className="w-full p-3 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl outline-none dark:text-white" value={productForm.price} onChange={e => setProductForm({...productForm, price: e.target.value})} placeholder="EGP" />
-                 </div>
-                 <div>
-                    <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 ml-1">Stock</label>
-                    <input required type="number" className="w-full p-3 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl outline-none dark:text-white" value={productForm.stock} onChange={e => setProductForm({...productForm, stock: e.target.value})} placeholder="Qty" />
-                 </div>
+                 <div><label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 ml-1">Price</label><input required type="number" className="w-full p-3 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl outline-none dark:text-white" value={productForm.price} onChange={e => setProductForm({...productForm, price: e.target.value})} placeholder="EGP" /></div>
+                 <div><label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 ml-1">Stock</label><input required type="number" className="w-full p-3 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl outline-none dark:text-white" value={productForm.stock} onChange={e => setProductForm({...productForm, stock: e.target.value})} placeholder="Qty" /></div>
               </div>
 
               <div className="bg-slate-50 dark:bg-slate-700/50 p-3 rounded-xl border border-slate-100 dark:border-slate-600 space-y-2">
                   <label className="text-xs font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1"><Ruler size={12}/> Size & Fit</label>
-                  <select className="w-full p-2 bg-white dark:bg-slate-600 border border-slate-200 dark:border-slate-500 rounded-lg text-sm outline-none dark:text-white" value={productForm.fitType} onChange={e => setProductForm({...productForm, fitType: e.target.value})}>
-                      {FITS.map(f => <option key={f} value={f}>{f}</option>)}
-                  </select>
+                  <select className="w-full p-2 bg-white dark:bg-slate-600 border border-slate-200 dark:border-slate-500 rounded-lg text-sm outline-none dark:text-white" value={productForm.fitType} onChange={e => setProductForm({...productForm, fitType: e.target.value})}>{FITS.map(f => <option key={f} value={f}>{f}</option>)}</select>
                   <input type="text" className="w-full p-2 bg-white dark:bg-slate-600 border border-slate-200 dark:border-slate-500 rounded-lg text-sm outline-none dark:text-white" value={productForm.sizeNote} onChange={e => setProductForm({...productForm, sizeNote: e.target.value})} placeholder="Note (e.g. Model is 175cm wearing M)" />
               </div>
 
-              <div className="relative">
-                <input type="text" className="w-full p-3 pl-9 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl outline-none dark:text-white" value={productForm.color} onChange={e => setProductForm({...productForm, color: e.target.value})} placeholder="Color (e.g. Black)" />
-                <Palette size={16} className="absolute left-3 top-4 text-slate-400 dark:text-slate-500"/>
-              </div>
+              <div className="relative"><input type="text" className="w-full p-3 pl-9 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl outline-none dark:text-white" value={productForm.color} onChange={e => setProductForm({...productForm, color: e.target.value})} placeholder="Color (e.g. Black)" /><Palette size={16} className="absolute left-3 top-4 text-slate-400 dark:text-slate-500"/></div>
               
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase flex justify-between">
-                    Product Images 
-                    {isUploading && <span className="text-violet-600 dark:text-violet-400 flex items-center gap-1"><Loader2 size={12} className="animate-spin"/> Uploading...</span>}
-                </label>
-                <div className="flex gap-2">
-                    <label className="flex-1 cursor-pointer bg-violet-50 dark:bg-violet-900/20 hover:bg-violet-100 dark:hover:bg-violet-900/40 text-violet-600 dark:text-violet-400 border border-violet-200 dark:border-violet-800 border-dashed rounded-xl p-3 flex items-center justify-center gap-2 transition">
-                        <Upload size={18} /> <span className="text-sm font-bold">Upload (Free)</span>
-                        <input type="file" className="hidden" accept="image/*" onChange={handleImageUpload} disabled={isUploading}/>
-                    </label>
-                </div>
-                <textarea required className="w-full p-3 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl outline-none text-sm h-16 dark:text-white" value={productForm.image} onChange={e => setProductForm({...productForm, image: e.target.value})} placeholder="Image URL..." rows={2}></textarea>
-              </div>
+              <div className="space-y-2"><label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase flex justify-between">Product Images {isUploading && <span className="text-violet-600 dark:text-violet-400 flex items-center gap-1"><Loader2 size={12} className="animate-spin"/> Uploading...</span>}</label><div className="flex gap-2"><label className="flex-1 cursor-pointer bg-violet-50 dark:bg-violet-900/20 hover:bg-violet-100 dark:hover:bg-violet-900/40 text-violet-600 dark:text-violet-400 border border-violet-200 dark:border-violet-800 border-dashed rounded-xl p-3 flex items-center justify-center gap-2 transition"><Upload size={18} /> <span className="text-sm font-bold">Upload (Free)</span><input type="file" className="hidden" accept="image/*" onChange={handleImageUpload} disabled={isUploading}/></label></div><textarea required className="w-full p-3 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl outline-none text-sm h-16 dark:text-white" value={productForm.image} onChange={e => setProductForm({...productForm, image: e.target.value})} placeholder="Image URL..." rows={2}></textarea></div>
               
-              <select className="w-full p-3 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl outline-none dark:text-white" value={productForm.category} onChange={e => setProductForm({...productForm, category: e.target.value})}>
-                {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
+              <select className="w-full p-3 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl outline-none dark:text-white" value={productForm.category} onChange={e => setProductForm({...productForm, category: e.target.value})}>{CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select>
               
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                    <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Tags</label>
-                    <button type="button" onClick={handleGenerateTags} disabled={isGeneratingTags} className="text-xs text-violet-600 dark:text-violet-300 bg-violet-50 dark:bg-violet-900/30 px-2 py-1 rounded-md font-bold">
-                        {isGeneratingTags ? '...' : 'Auto Tags ✨'}
-                    </button>
-                </div>
-                <input type="text" className="w-full p-3 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl outline-none dark:text-white" value={productForm.tags} onChange={e => setProductForm({...productForm, tags: e.target.value})} placeholder="Tags..." />
-              </div>
+              <div className="space-y-2"><div className="flex justify-between items-center"><label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Tags</label><button type="button" onClick={handleGenerateTags} disabled={isGeneratingTags} className="text-xs text-violet-600 dark:text-violet-300 bg-violet-50 dark:bg-violet-900/30 px-2 py-1 rounded-md font-bold">{isGeneratingTags ? '...' : 'Auto Tags ✨'}</button></div><input type="text" className="w-full p-3 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl outline-none dark:text-white" value={productForm.tags} onChange={e => setProductForm({...productForm, tags: e.target.value})} placeholder="Tags..." /></div>
 
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                    <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Description</label>
-                    <button type="button" onClick={handleGenerateDescription} disabled={isGeneratingDesc} className="text-xs text-fuchsia-600 dark:text-fuchsia-300 bg-fuchsia-50 dark:bg-fuchsia-900/30 px-2 py-1 rounded-md font-bold">
-                        {isGeneratingDesc ? '...' : 'Generate ✨'}
-                    </button>
-                </div>
-                <textarea required className="w-full p-3 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl h-24 text-sm outline-none dark:text-white" value={productForm.description} onChange={e => setProductForm({...productForm, description: e.target.value})} placeholder="Desc..."></textarea>
-              </div>
+              <div className="space-y-2"><div className="flex justify-between items-center"><label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Description</label><button type="button" onClick={handleGenerateDescription} disabled={isGeneratingDesc} className="text-xs text-fuchsia-600 dark:text-fuchsia-300 bg-fuchsia-50 dark:bg-fuchsia-900/30 px-2 py-1 rounded-md font-bold">{isGeneratingDesc ? '...' : 'Generate ✨'}</button></div><textarea required className="w-full p-3 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl h-24 text-sm outline-none dark:text-white" value={productForm.description} onChange={e => setProductForm({...productForm, description: e.target.value})} placeholder="Desc..."></textarea></div>
 
-              <div className="flex gap-3 pt-2">
-                <button type="submit" className="flex-1 bg-violet-600 text-white py-3 rounded-xl hover:bg-violet-700 font-bold shadow-lg transition">{editingId ? 'Save' : 'Add'}</button>
-                {editingId && <button type="button" onClick={() => { setEditingId(null); setProductForm({ name: '', price: '', stock: '', image: '', category: 'Abayas', description: '', tags: '', color: '', sizeNote: '', fitType: 'Regular Fit' }); }} className="bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 px-4 rounded-xl font-bold">Cancel</button>}
-              </div>
+              <div className="flex gap-3 pt-2"><button type="submit" className="flex-1 bg-violet-600 text-white py-3 rounded-xl hover:bg-violet-700 font-bold shadow-lg transition">{editingId ? 'Save' : 'Add'}</button>{editingId && <button type="button" onClick={() => { setEditingId(null); setProductForm({ name: '', price: '', stock: '', image: '', category: 'Abayas', description: '', tags: '', color: '', sizeNote: '', fitType: 'Regular Fit' }); }} className="bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 px-4 rounded-xl font-bold">Cancel</button>}</div>
             </form>
           </div>
           <div className="lg:col-span-2 bg-white/60 dark:bg-slate-800/60 backdrop-blur-md p-6 rounded-3xl border border-white/60 dark:border-slate-700 shadow-sm overflow-y-auto max-h-[700px] space-y-3 custom-scrollbar transition-colors">
@@ -350,6 +249,38 @@ const AdminDashboard = ({ user, products, showNotification }) => {
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* TAB: REVIEWS (NEW) */}
+      {activeTab === 'reviews' && (
+        <div className="space-y-4 animate-fade-in">
+            <h3 className="text-2xl font-bold text-slate-800 dark:text-white mb-6 flex items-center gap-2"><MessageSquare className="text-violet-500"/> Customer Reviews</h3>
+            {reviews.length === 0 ? <div className="text-center py-20 text-slate-400">No reviews yet.</div> :
+              reviews.map(review => (
+                <div key={review.id} className="bg-white/80 dark:bg-slate-800/80 p-6 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-sm flex flex-col md:flex-row justify-between items-start gap-4 transition-colors">
+                   <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                         <div className="w-8 h-8 bg-violet-100 dark:bg-violet-900/30 rounded-full flex items-center justify-center text-violet-600 dark:text-violet-300 font-bold text-xs">
+                            {review.userName.charAt(0).toUpperCase()}
+                         </div>
+                         <div>
+                            <p className="font-bold text-slate-800 dark:text-white text-sm">{review.userName}</p>
+                            <p className="text-[10px] text-slate-400">{new Date(review.createdAt).toLocaleDateString()}</p>
+                         </div>
+                      </div>
+                      <div className="flex text-yellow-400 mb-3">
+                         {[...Array(5)].map((_, i) => <Star key={i} size={14} fill={i < review.rating ? "currentColor" : "none"} className={i < review.rating ? "" : "text-slate-200 dark:text-slate-600"} />)}
+                      </div>
+                      <p className="text-slate-600 dark:text-slate-300 text-sm leading-relaxed bg-slate-50 dark:bg-slate-700/30 p-3 rounded-xl border border-slate-100 dark:border-slate-700/50">"{review.comment}"</p>
+                      <p className="text-[10px] text-violet-400 mt-2 font-bold uppercase tracking-wider">Product ID: {review.productId}</p>
+                   </div>
+                   <button onClick={() => handleDeleteReview(review.id)} className="text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 p-2 rounded-xl transition flex items-center gap-2 text-xs font-bold border border-red-100 dark:border-red-900/20">
+                        <Trash2 size={16}/> Delete
+                   </button>
+                </div>
+              ))
+            }
         </div>
       )}
 

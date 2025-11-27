@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight, Truck, TicketPercent } from 'lucide-react';
-import { collection, query, where, getDocs, writeBatch, doc, increment, setDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, writeBatch, doc, increment, setDoc, getDoc } from 'firebase/firestore'; // 1. ضفنا getDoc
 import { db, getAppId } from '../firebase';
 import SEO from '../components/SEO';
 
@@ -17,6 +17,33 @@ const Checkout = ({ user, cart, calculateTotal, setCart, showNotification }) => 
     
     const subtotal = calculateTotal();
     const finalTotal = appliedDiscount ? subtotal - (subtotal * appliedDiscount.amount / 100) : subtotal;
+
+    // 2. السحر هنا: جلب بيانات المستخدم المسجلة مسبقاً
+    useEffect(() => {
+        if (user && !user.isAnonymous) {
+            const fetchProfile = async () => {
+                try {
+                    const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'profiles', user.uid);
+                    const docSnap = await getDoc(docRef);
+                    
+                    if (docSnap.exists()) {
+                        const data = docSnap.data();
+                        setForm(prev => ({
+                            ...prev,
+                            name: data.fullName || '',
+                            phone: data.phone || '',
+                            address: data.address || '',
+                            governorate: data.governorate || 'Cairo'
+                        }));
+                        showNotification('Details auto-filled! ✨');
+                    }
+                } catch (e) {
+                    console.error("Auto-fill error", e);
+                }
+            };
+            fetchProfile();
+        }
+    }, [user, appId]);
 
     const applyPromoCode = async () => {
         if(!promoCode) return;
