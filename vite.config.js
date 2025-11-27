@@ -8,6 +8,10 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      // السطرين الجداد دول هم الحل 👇
+      devOptions: {
+        enabled: true
+      },
       includeAssets: ['favicon.svg', 'favicon.ico', 'robots.txt', 'apple-touch-icon.png'],
       manifest: {
         name: 'Modern Style Store',
@@ -19,7 +23,7 @@ export default defineConfig({
         orientation: 'portrait',
         icons: [
           {
-            src: '/pwa-192x192.png',
+            src: '/pwa-192x192.png', // اتأكدنا إن الشرطة موجودة
             sizes: '192x192',
             type: 'image/png',
           },
