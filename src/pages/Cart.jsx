@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ShoppingBag, Minus, Plus, ArrowRight } from 'lucide-react';
-import { motion } from 'framer-motion'; // 1. استدعاء الحركة
+import { motion } from 'framer-motion'; 
 
 const Cart = ({ cart, updateCartQuantity, removeFromCart, calculateTotal }) => {
     const navigate = useNavigate();
@@ -14,7 +14,6 @@ const Cart = ({ cart, updateCartQuantity, removeFromCart, calculateTotal }) => {
             <div className="text-center py-20 bg-white/60 dark:bg-slate-800/60 backdrop-blur-xl rounded-[3rem] border border-white/60 dark:border-slate-700 shadow-lg transition-colors">
                 <ShoppingBag size={64} className="mx-auto text-slate-300 dark:text-slate-600 mb-6"/>
                 <p className="text-slate-500 dark:text-slate-400 text-xl mb-8 font-medium">Your bag is currently empty.</p>
-                {/* Bouncy Start Button */}
                 <motion.button 
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
@@ -28,15 +27,14 @@ const Cart = ({ cart, updateCartQuantity, removeFromCart, calculateTotal }) => {
             <div className="grid lg:grid-cols-3 gap-12">
               <div className="lg:col-span-2 space-y-6">
                 {cart.map((item, i) => (
-                  // Animated Cart Item Entry
                   <motion.div 
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.05 }} // Stagger effect manual
+                    transition={{ delay: i * 0.05 }} 
                     key={i} 
                     className="flex flex-col md:flex-row items-center gap-4 md:gap-6 bg-white/80 dark:bg-slate-800/80 p-4 md:p-6 rounded-3xl border border-white dark:border-slate-700 shadow-sm hover:shadow-md transition-all duration-300"
                   >
-                    <img src={item.image} className="w-full md:w-24 h-48 md:h-24 rounded-2xl object-cover shadow-sm" alt=""/>
+                    <img loading="lazy" decoding="async" src={item.image} className="w-full md:w-24 h-48 md:h-24 rounded-2xl object-cover shadow-sm" alt=""/>
                     
                     <div className="flex-1 w-full text-center md:text-left">
                       <h3 className="font-bold text-slate-800 dark:text-white text-lg mb-1">{item.name}</h3>
@@ -46,13 +44,11 @@ const Cart = ({ cart, updateCartQuantity, removeFromCart, calculateTotal }) => {
                     
                     <div className="flex flex-row md:flex-col items-center md:items-end gap-3 w-full md:w-auto justify-between md:justify-start">
                       <div className="flex items-center bg-slate-100 dark:bg-slate-700 rounded-xl px-2 py-1 gap-3 transition-colors">
-                          {/* Bouncy Controls */}
-                          <motion.button whileTap={{ scale: 0.8 }} onClick={() => updateCartQuantity(i, -1)} className="text-slate-500 dark:text-slate-300 hover:text-slate-800 dark:hover:text-white p-1 transition"><Minus size={14}/></motion.button>
+                          <motion.button aria-label="Decrease quantity" whileTap={{ scale: 0.8 }} onClick={() => updateCartQuantity(i, -1)} className="text-slate-500 dark:text-slate-300 hover:text-slate-800 dark:hover:text-white p-1 transition"><Minus size={14}/></motion.button>
                           <span className="text-slate-800 dark:text-white font-bold text-sm w-4 text-center">{item.quantity}</span>
-                          <motion.button whileTap={{ scale: 0.8 }} onClick={() => updateCartQuantity(i, 1)} className="text-slate-500 dark:text-slate-300 hover:text-slate-800 dark:hover:text-white p-1 transition"><Plus size={14}/></motion.button>
+                          <motion.button aria-label="Increase quantity" whileTap={{ scale: 0.8 }} onClick={() => updateCartQuantity(i, 1)} className="text-slate-500 dark:text-slate-300 hover:text-slate-800 dark:hover:text-white p-1 transition"><Plus size={14}/></motion.button>
                       </div>
                       
-                      {/* Bouncy Remove */}
                       <motion.button 
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.9 }}
@@ -74,7 +70,6 @@ const Cart = ({ cart, updateCartQuantity, removeFromCart, calculateTotal }) => {
                 </div>
                 <div className="flex justify-between mb-8 text-2xl font-black text-slate-800 dark:text-white border-t border-slate-100 dark:border-slate-700 pt-6"><span>Total</span><span>{calculateTotal()} EGP</span></div>
                 
-                {/* Bouncy Checkout Button */}
                 <motion.button 
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.95 }}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Suspense, lazy } from 'react'; // 1. ضفنا lazy و Suspense
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { Routes, Route, useNavigate, Navigate, useLocation } from 'react-router-dom';
 import { onAuthStateChanged, signInAnonymously, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { collection, onSnapshot, query } from 'firebase/firestore';
@@ -6,7 +6,7 @@ import { auth, db, getAppId } from './firebase';
 import { CheckCircle, XCircle } from 'lucide-react';
 import { AnimatePresence } from 'framer-motion';
 
-// Components (دول نسيبهم زي ما هما عشان يظهروا علطول)
+// Components
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import EnhancedBackground from './components/EnhancedBackground';
@@ -14,9 +14,9 @@ import AIStylist from './components/AIStylist';
 import SEO from './components/SEO';
 import PageTransition from './components/PageTransition';
 import ScrollToTop from './components/ScrollToTop';
-import PageLoader from './components/PageLoader'; // 2. استدعاء اللودر
+import PageLoader from './components/PageLoader';
 
-// Pages (Lazy Loading) - 3. تحويل الصفحات لنظام التحميل الكسول
+// Pages (Lazy Loading)
 const Home = lazy(() => import('./pages/Home'));
 const ProductDetails = lazy(() => import('./pages/ProductDetails'));
 const Cart = lazy(() => import('./pages/Cart'));
@@ -92,13 +92,15 @@ export default function App() {
       <Navbar user={user} cartCount={cart.reduce((a,i)=>a+i.quantity,0)} wishlistCount={wishlist.length} handleLogin={handleLogin} />
 
       <main className="relative z-10 min-h-[80vh] pt-4 pb-12">
-        {/* 4. تغليف الراوتر بـ Suspense */}
         <Suspense fallback={<PageLoader />}>
             <AnimatePresence mode="wait">
                 <Routes location={location} key={location.pathname}>
                 
                 <Route path="/" element={<PageTransition><SEO title="Home" /><Home products={products} addToCart={addToCart} wishlist={wishlist} toggleWishlist={toggleWishlist} /></PageTransition>} />
-                <Route path="/product/:id" element={<PageTransition><ProductDetails products={products} addToCart={addToCart} /></PageTransition>} />
+                
+                {/* هنا التعديل: مررنا الـ user */}
+                <Route path="/product/:id" element={<PageTransition><ProductDetails products={products} addToCart={addToCart} user={user} /></PageTransition>} />
+                
                 <Route path="/cart" element={<PageTransition><SEO title="My Bag" /><Cart cart={cart} updateCartQuantity={updateCartQuantity} removeFromCart={removeFromCart} calculateTotal={calculateTotal} /></PageTransition>} />
                 <Route path="/wishlist" element={<PageTransition><SEO title="My Wishlist" /><Wishlist wishlist={wishlist} removeFromWishlist={(id) => toggleWishlist({id})} addToCart={addToCart} /></PageTransition>} />
                 <Route path="/checkout" element={<PageTransition><SEO title="Checkout" /><Checkout user={user} cart={cart} calculateTotal={calculateTotal} setCart={setCart} showNotification={showNotification} /></PageTransition>} />

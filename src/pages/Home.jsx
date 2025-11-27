@@ -63,7 +63,7 @@ const Home = ({ products, addToCart, wishlist, toggleWishlist }) => {
       <div id="products" className="max-w-7xl mx-auto px-4 z-10 relative">
         <div className="flex flex-col gap-6 mb-10">
             <div className="relative w-full max-w-md mx-auto">
-                <input type="text" placeholder="Search for products..." className="w-full py-4 pl-12 pr-4 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-violet-200 dark:focus:ring-violet-900 text-slate-700 dark:text-white font-bold transition placeholder:text-slate-400 dark:placeholder:text-slate-500" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                <input aria-label="Search products" type="text" placeholder="Search for products..." className="w-full py-4 pl-12 pr-4 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-violet-200 dark:focus:ring-violet-900 text-slate-700 dark:text-white font-bold transition placeholder:text-slate-400 dark:placeholder:text-slate-500" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                 <Search className="absolute left-4 top-4 text-slate-400 dark:text-slate-500" size={20}/>
             </div>
             <div className="flex flex-wrap gap-2 justify-center">
@@ -90,22 +90,36 @@ const Home = ({ products, addToCart, wishlist, toggleWishlist }) => {
                 className="group bg-white/70 dark:bg-slate-800/70 backdrop-blur-md rounded-2xl md:rounded-[2rem] overflow-hidden border border-white/60 dark:border-slate-700 shadow-sm hover:shadow-2xl transition-all duration-500 flex flex-col relative"
             >
               <div className="relative w-full aspect-[3/4] overflow-hidden cursor-pointer bg-slate-50 dark:bg-slate-900" onClick={() => navigate(`/product/${p.id}`)}>
-                {/* 🔥 السحر هنا: layoutId
-                    ادينا للصورة اسم مميز عشان لما تروح الصفحة التانية تلاقيه
-                */}
+                {/* Image Optimization: loading="lazy" & decoding="async" */}
                 <motion.img 
                     layoutId={`prod-img-${p.id}`}
                     src={p.image} 
                     alt={p.name} 
+                    loading="lazy"
+                    decoding="async"
                     className={`w-full h-full object-cover object-top group-hover:scale-110 transition duration-700 ${isOutOfStock ? 'grayscale opacity-70' : ''}`} 
                 />
                 
-                <motion.button whileTap={{ scale: 0.8 }} onClick={(e) => { e.stopPropagation(); toggleWishlist(p); }} className="absolute top-3 right-3 p-2 rounded-full bg-white/80 dark:bg-slate-900/80 hover:bg-white dark:hover:bg-slate-900 shadow-sm transition z-10">
+                {/* Accessibility: aria-label added */}
+                <motion.button 
+                    aria-label="Add to wishlist"
+                    whileTap={{ scale: 0.8 }}
+                    onClick={(e) => { e.stopPropagation(); toggleWishlist(p); }} 
+                    className="absolute top-3 right-3 p-2 rounded-full bg-white/80 dark:bg-slate-900/80 hover:bg-white dark:hover:bg-slate-900 shadow-sm transition z-10"
+                >
                     <Heart size={20} className={`transition ${isInWishlist(p.id) ? 'fill-red-500 text-red-500' : 'text-slate-400 dark:text-slate-300 hover:text-red-500'}`} />
                 </motion.button>
 
                 {!isOutOfStock ? (
-                    <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={(e) => { e.stopPropagation(); addToCart(p); }} className="absolute bottom-2 right-2 md:bottom-6 md:right-6 bg-white dark:bg-slate-700 text-slate-900 dark:text-white p-2 md:p-4 rounded-full shadow-lg opacity-80 md:opacity-0 group-hover:opacity-100 transition duration-500 hover:bg-violet-600 dark:hover:bg-violet-500 hover:text-white"><ShoppingBag size={16} className="md:w-6 md:h-6" /></motion.button>
+                    <motion.button 
+                        aria-label="Add to cart"
+                        whileHover={{ scale: 1.1 }} 
+                        whileTap={{ scale: 0.9 }} 
+                        onClick={(e) => { e.stopPropagation(); addToCart(p); }} 
+                        className="absolute bottom-2 right-2 md:bottom-6 md:right-6 bg-white dark:bg-slate-700 text-slate-900 dark:text-white p-2 md:p-4 rounded-full shadow-lg opacity-80 md:opacity-0 group-hover:opacity-100 transition duration-500 hover:bg-violet-600 dark:hover:bg-violet-500 hover:text-white"
+                    >
+                        <ShoppingBag size={16} className="md:w-6 md:h-6" />
+                    </motion.button>
                 ) : (
                     <div className="absolute bottom-0 w-full bg-slate-900/80 text-white text-center text-xs font-bold py-2 backdrop-blur-md flex items-center justify-center gap-1"><Box size={12}/> Out of Stock</div>
                 )}

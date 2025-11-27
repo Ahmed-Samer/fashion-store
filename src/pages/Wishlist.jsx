@@ -10,13 +10,11 @@ const Wishlist = ({ wishlist, removeFromWishlist, addToCart }) => {
     <div className="max-w-7xl mx-auto px-4 py-16 animate-fade-in min-h-[60vh]">
       <SEO title="My Wishlist" />
       
-      {/* 1. Title Fixed: Added dark:text-white */}
       <h2 className="text-3xl md:text-4xl font-bold mb-10 text-slate-800 dark:text-white flex items-center gap-3 transition-colors">
         <Heart className="text-red-500 fill-red-500" /> My Wishlist
       </h2>
 
       {wishlist.length === 0 ? (
-        /* 2. Empty State Fixed: Added dark backgrounds and borders */
         <div className="text-center py-20 bg-white/60 dark:bg-slate-800/60 backdrop-blur-xl rounded-[3rem] border border-white/60 dark:border-slate-700 shadow-lg transition-colors">
           <Heart size={64} className="mx-auto text-slate-300 dark:text-slate-600 mb-6" />
           <p className="text-slate-500 dark:text-slate-400 text-xl mb-8 font-medium">Your wishlist is empty.</p>
@@ -27,11 +25,10 @@ const Wishlist = ({ wishlist, removeFromWishlist, addToCart }) => {
       ) : (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8">
           {wishlist.map(p => (
-            /* 3. Product Cards Fixed */
             <div key={p.id} className="group bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 overflow-hidden shadow-sm hover:shadow-xl transition duration-500 flex flex-col relative">
               <div className="relative w-full aspect-[3/4] overflow-hidden bg-slate-50 dark:bg-slate-900">
-                <img src={p.image} alt={p.name} className="w-full h-full object-cover cursor-pointer" onClick={() => navigate(`/product/${p.id}`)} />
-                <button onClick={() => removeFromWishlist(p.id)} className="absolute top-2 right-2 bg-white/80 dark:bg-slate-900/80 p-2 rounded-full text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 transition shadow-sm">
+                <img loading="lazy" decoding="async" src={p.image} alt={p.name} className="w-full h-full object-cover cursor-pointer" onClick={() => navigate(`/product/${p.id}`)} />
+                <button aria-label="Remove from wishlist" onClick={() => removeFromWishlist(p.id)} className="absolute top-2 right-2 bg-white/80 dark:bg-slate-900/80 p-2 rounded-full text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 transition shadow-sm">
                   <Trash2 size={18} />
                 </button>
               </div>
