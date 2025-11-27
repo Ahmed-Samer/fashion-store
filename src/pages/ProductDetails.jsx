@@ -3,10 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowRight, Minus, Plus, ShoppingBag, Rocket, Ruler, X, Box } from 'lucide-react';
 import { motion } from 'framer-motion'; 
 import { SIZE_CHARTS } from '../utils/sizeData'; 
-// 1. استدعاء مكون التقييمات
 import ProductReviews from '../components/ProductReviews';
 
-// 2. استقبال user في الـ props
 const ProductDetails = ({ products, addToCart, user }) => {
     const { id } = useParams();
     const navigate = useNavigate();
@@ -53,7 +51,7 @@ const ProductDetails = ({ products, addToCart, user }) => {
                 {images.map((img, i) => (
                     <motion.img 
                         key={i} 
-                        layoutId={i === 0 ? `prod-img-${selectedProduct.id}` : undefined}
+                        // layoutId removed here for better performance
                         src={img} 
                         id={`prod-img-${i}`} 
                         loading={i === 0 ? "eager" : "lazy"}
@@ -121,7 +119,6 @@ const ProductDetails = ({ products, addToCart, user }) => {
           </div>
         </div>
         
-        {/* 3. إضافة مكون التقييمات هنا */}
         <ProductReviews productId={selectedProduct.id} user={user} />
 
         <div className="border-t border-slate-200 dark:border-slate-700 pt-12 md:pt-16 mt-12">
