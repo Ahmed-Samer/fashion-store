@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react'; // 1. ضفنا lazy و Suspense
 import { Routes, Route, useNavigate, Navigate, useLocation } from 'react-router-dom';
 import { onAuthStateChanged, signInAnonymously, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { collection, onSnapshot, query } from 'firebase/firestore';
@@ -6,29 +6,31 @@ import { auth, db, getAppId } from './firebase';
 import { CheckCircle, XCircle } from 'lucide-react';
 import { AnimatePresence } from 'framer-motion';
 
-// Components
+// Components (دول نسيبهم زي ما هما عشان يظهروا علطول)
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import EnhancedBackground from './components/EnhancedBackground';
 import AIStylist from './components/AIStylist';
 import SEO from './components/SEO';
 import PageTransition from './components/PageTransition';
-import ScrollToTop from './components/ScrollToTop'; // 1. استدعاء المكون السحري
+import ScrollToTop from './components/ScrollToTop';
+import PageLoader from './components/PageLoader'; // 2. استدعاء اللودر
 
-// Pages
-import Home from './pages/Home';
-import ProductDetails from './pages/ProductDetails';
-import Cart from './pages/Cart';
-import Checkout from './pages/Checkout';
-import ThankYou from './pages/ThankYou';
-import AdminDashboard from './pages/AdminDashboard';
-import AdminLogin from './pages/AdminLogin';
-import UserProfile from './pages/UserProfile';
-import About from './pages/About';
-import Contact from './pages/Contact';
-import Returns from './pages/Returns';
-import Wishlist from './pages/Wishlist';
-import TrackOrder from './pages/TrackOrder';
+// Pages (Lazy Loading) - 3. تحويل الصفحات لنظام التحميل الكسول
+const Home = lazy(() => import('./pages/Home'));
+const ProductDetails = lazy(() => import('./pages/ProductDetails'));
+const Cart = lazy(() => import('./pages/Cart'));
+const Checkout = lazy(() => import('./pages/Checkout'));
+const ThankYou = lazy(() => import('./pages/ThankYou'));
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
+const AdminLogin = lazy(() => import('./pages/AdminLogin'));
+const UserProfile = lazy(() => import('./pages/UserProfile'));
+const About = lazy(() => import('./pages/About'));
+const Contact = lazy(() => import('./pages/Contact'));
+const Returns = lazy(() => import('./pages/Returns'));
+const Wishlist = lazy(() => import('./pages/Wishlist'));
+const TrackOrder = lazy(() => import('./pages/TrackOrder'));
+const NotFound = lazy(() => import('./pages/NotFound'));
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -85,30 +87,35 @@ export default function App() {
 
   return (
     <div className="min-h-screen font-sans text-slate-800 relative overflow-x-hidden selection:bg-violet-200 selection:text-violet-900" dir="ltr">
-      <ScrollToTop /> {/* 2. المكون هنا هيشتغل مع كل تغيير للصفحة */}
+      <ScrollToTop />
       <EnhancedBackground />
       <Navbar user={user} cartCount={cart.reduce((a,i)=>a+i.quantity,0)} wishlistCount={wishlist.length} handleLogin={handleLogin} />
 
       <main className="relative z-10 min-h-[80vh] pt-4 pb-12">
-        <AnimatePresence mode="wait">
-            <Routes location={location} key={location.pathname}>
-            
-            <Route path="/" element={<PageTransition><SEO title="Home" /><Home products={products} addToCart={addToCart} wishlist={wishlist} toggleWishlist={toggleWishlist} /></PageTransition>} />
-            <Route path="/product/:id" element={<PageTransition><ProductDetails products={products} addToCart={addToCart} /></PageTransition>} />
-            <Route path="/cart" element={<PageTransition><SEO title="My Bag" /><Cart cart={cart} updateCartQuantity={updateCartQuantity} removeFromCart={removeFromCart} calculateTotal={calculateTotal} /></PageTransition>} />
-            <Route path="/wishlist" element={<PageTransition><SEO title="My Wishlist" /><Wishlist wishlist={wishlist} removeFromWishlist={(id) => toggleWishlist({id})} addToCart={addToCart} /></PageTransition>} />
-            <Route path="/checkout" element={<PageTransition><SEO title="Checkout" /><Checkout user={user} cart={cart} calculateTotal={calculateTotal} setCart={setCart} showNotification={showNotification} /></PageTransition>} />
-            <Route path="/thank-you" element={<PageTransition><ThankYou /></PageTransition>} />
-            <Route path="/profile" element={<PageTransition><SEO title="Profile" /><UserProfile user={user} showNotification={showNotification} /></PageTransition>} />
-            <Route path="/about" element={<PageTransition><SEO title="Our Story" /><About /></PageTransition>} />
-            <Route path="/contact" element={<PageTransition><SEO title="Contact Us" /><Contact user={user} /></PageTransition>} />
-            <Route path="/returns" element={<PageTransition><SEO title="Returns Policy" /><Returns /></PageTransition>} />
-            <Route path="/track-order" element={<PageTransition><SEO title="Track Order" /><TrackOrder /></PageTransition>} />
-            <Route path={SECRET_ADMIN_ROUTE} element={<PageTransition><SEO title="Admin Login" /><AdminLogin setIsAdmin={setIsAdmin} /></PageTransition>} />
-            <Route path="/admin" element={isAdmin ? <PageTransition><SEO title="Dashboard" /><AdminDashboard user={user} products={products} showNotification={showNotification} /></PageTransition> : <Navigate to="/" replace />} />
-            
-            </Routes>
-        </AnimatePresence>
+        {/* 4. تغليف الراوتر بـ Suspense */}
+        <Suspense fallback={<PageLoader />}>
+            <AnimatePresence mode="wait">
+                <Routes location={location} key={location.pathname}>
+                
+                <Route path="/" element={<PageTransition><SEO title="Home" /><Home products={products} addToCart={addToCart} wishlist={wishlist} toggleWishlist={toggleWishlist} /></PageTransition>} />
+                <Route path="/product/:id" element={<PageTransition><ProductDetails products={products} addToCart={addToCart} /></PageTransition>} />
+                <Route path="/cart" element={<PageTransition><SEO title="My Bag" /><Cart cart={cart} updateCartQuantity={updateCartQuantity} removeFromCart={removeFromCart} calculateTotal={calculateTotal} /></PageTransition>} />
+                <Route path="/wishlist" element={<PageTransition><SEO title="My Wishlist" /><Wishlist wishlist={wishlist} removeFromWishlist={(id) => toggleWishlist({id})} addToCart={addToCart} /></PageTransition>} />
+                <Route path="/checkout" element={<PageTransition><SEO title="Checkout" /><Checkout user={user} cart={cart} calculateTotal={calculateTotal} setCart={setCart} showNotification={showNotification} /></PageTransition>} />
+                <Route path="/thank-you" element={<PageTransition><ThankYou /></PageTransition>} />
+                <Route path="/profile" element={<PageTransition><SEO title="Profile" /><UserProfile user={user} showNotification={showNotification} /></PageTransition>} />
+                <Route path="/about" element={<PageTransition><SEO title="Our Story" /><About /></PageTransition>} />
+                <Route path="/contact" element={<PageTransition><SEO title="Contact Us" /><Contact user={user} /></PageTransition>} />
+                <Route path="/returns" element={<PageTransition><SEO title="Returns Policy" /><Returns /></PageTransition>} />
+                <Route path="/track-order" element={<PageTransition><SEO title="Track Order" /><TrackOrder /></PageTransition>} />
+                <Route path={SECRET_ADMIN_ROUTE} element={<PageTransition><SEO title="Admin Login" /><AdminLogin setIsAdmin={setIsAdmin} /></PageTransition>} />
+                <Route path="/admin" element={isAdmin ? <PageTransition><SEO title="Dashboard" /><AdminDashboard user={user} products={products} showNotification={showNotification} /></PageTransition> : <Navigate to="/" replace />} />
+                
+                <Route path="*" element={<PageTransition><NotFound /></PageTransition>} />
+
+                </Routes>
+            </AnimatePresence>
+        </Suspense>
       </main>
       <AIStylist products={products} addToCart={addToCart} />
       <Footer />
